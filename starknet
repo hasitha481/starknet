@@ -1,0 +1,60 @@
+%lang starknet
+@external
+from starkware.cairo.common.alloc import alloc
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_nn
+from starkware.cairo.common.serialize import serialize_word
+from starkware.cairo.common.uint256 import Uint256, uint256_add
+from starkware.starknet.common.storage import Storage
+from starkware.starknet.common.syscalls import send_transaction
+from starkware.starknet.security.safe_math import udiv_rem, umul
+
+const OWNER = 0x123456789abcdef  # Replace with the contract owner's address
+
+# Storage variables
+@storage_var
+func owner() -> (res: felt):
+end
+
+@storage_var
+func balances(account: felt) -> (balance: Uint256):
+end
+
+# Contract initialization
+@external
+func initialize():
+    owner.write(OWNER)
+    return ()
+end
+
+# Security check to ensure only the owner can call certain functions
+func only_owner():
+    let (current_owner) = owner.read()
+    assert current_owner = OWNER
+    return ()
+end
+
+# Token distribution function
+@external
+func distribute_tokens(recipients: felt*, amounts: Uint256*, n: felt):
+    only_owner()
+
+    let i = 0
+    for i in range(n):
+        let recipient = recipients[i]
+        let amount = amounts[i]
+
+        # Update the recipient's balance
+        let (old_balance) = balances.read(recipient)
+        let new_balance = uint256_add(old_balance, amount)
+        balances.write(recipient, new_balance)
+
+    return ()
+end
+
+# Function to check the balance of an account
+@view
+func get_balance(account: felt) -> (balance: Uint256):
+    let (balance) = balances.read(account)
+    return (balance)
+end
